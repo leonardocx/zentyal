@@ -1,0 +1,124 @@
+#!/usr/bin/perl
+
+# Copyright (C) 2006-2007 Warp Networks S.L.
+# Copyright (C) 2008-2013 Zentyal S.L.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License, version 2, as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+use strict;
+use warnings;
+
+use EBox;
+use EBox::Exceptions::External;
+use EBox::Global;
+use EBox::ProgressIndicator;
+
+use Getopt::Long qw(GetOptionsFromArray);
+use Net::DBus;
+use Net::DBus::Reactor;
+use TryCatch::Lite;
+
+sub _regenSoftwareLists
+{
+    my $global = EBox::Global->getInstance(1);
+    my $software = $global->modInstance('software');
+    #causes the cache to be generated
+    $software->listUpgradablePkgs(1);
+}
+
+sub propertyHandler {
+    my ($property_name, $value) = @_;
+
+    EBox::info("Got Property: " . $property_name . " value: " . $value);
+#                if ($text =~ /^E:\s*(.*)$/) {
+#                    $errorMsg = $1;
+#                    EBox::error($errorMsg);
+#                    $retValue = 1;
+#                    $break = 1;
+#                }
+#                elsif ($text =~ /^ins([0-9]*)/) {
+#                    $progress->setTotalTicks($1*2);
+#                }
+#                elsif ($text =~ /^Get:[0-9]*\s(.*)/){
+#                    $progress->setMessage("Downloading $1");
+#                }
+#                elsif ($text =~ /^\s*(Unpacking\s.*)/){
+#                    $progress->notifyTick();
+#                    $progress->setMessage($text);
+#                }
+#                elsif ($text =~ /^\s*(Setting up\s.*)/){
+#                    $progress->notifyTick();
+#                    $progress->setMessage($text);
+#                }
+#            }
+#            $oldText = $firstLine;
+#            $lastLine = $text;
+#        }
+}
+
+EBox::init();
+
+my $progressId          = undef;
+GetOptionsFromArray(\@ARGV, 'progress-id=s' => \$progressId);
+my @packages            = @ARGV;
+
+my $progress = undef;
+if ($progressId) {
+    $progress = EBox::ProgressIndicator->retrieve($progressId);
+    $progress->started() or die('progress executable is not running');
+}
+
+my $webAdminMod = EBox::Global->getInstance()->modInstance('webadmin');
+
+my ($retValue, $errorMsg, $pid) = (0, '', 0);
+try {
+    my $bus = Net::DBus->system();
+    my $reactor = Net::DBus::Reactor->main();
+    $reactor->add_timeout(50000, sub { $reactor->shutdown(); });
+
+    my $service = $bus->get_service("org.debian.apt");
+    my $object = $service->get_object("/org/debian/apt");
+    my $tid = $object->UpdateCache();
+
+    my $tid_object = $service->get_object($tid);
+    $tid_object->connect_to_signal("PropertyChanged", \&propertyHandler);
+    $tid_object->connect_to_signal("Finished", sub { $reactor->shutdown(); });
+
+    $webAdminMod->disableRestartOnTrigger();
+
+    $tid_object->Run();
+    $reactor->run();
+} catch ($e) {
+    #$retValue = $e->exitValue();
+    $errorMsg = $e->stringify();
+    EBox::error($errorMsg);
+}
+
+$webAdminMod->enableRestartOnTrigger();
+try {
+    $webAdminMod->restartService();
+    if ($progress) {
+        $progress->setAsFinished($retValue, $errorMsg);
+    }
+} catch (EBox::Exceptions::External $e) {
+    # Ignore if it cannot put as finished since it's possible it
+    # is already destroyed. Why?
+    EBox::warn("$progressId does not exist");
+}
+
+_regenSoftwareLists(); # XXX maybe this could be put bef_ the end of progress
+                       # indicator to avoid problems
+exit $retValue;
+
+1;

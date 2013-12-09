@@ -1,4 +1,5 @@
 HEAD
+	+ Stop using apt directly, instead, we use the aptdaemon's D-BUS API
 	+ Replace select/deselect all buttons with column checkbox
 3.3
 	+ Switch from Error to TryCatch for exception handling
