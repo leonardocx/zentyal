@@ -26,7 +26,7 @@ use EBox::Exceptions::NotImplemented;
 use EBox::Exceptions::Internal;
 use EBox::Html;
 
-use POSIX qw(ceil floor);
+use POSIX qw(ceil floor INT_MAX);
 use TryCatch::Lite;
 
 sub new
@@ -71,6 +71,20 @@ sub getParams
     $params{'filter'} = $self->unsafeParam('filter');
 
     return %params;
+}
+
+sub _pageSize
+{
+    my ($self) = @_;
+    my $pageSize = $self->param('pageSize');
+    if (not $pageSize) {
+        $pageSize = $self->{tableModel}->pageSize();
+    }
+    if ($pageSize eq '_all') {
+        return INT_MAX; # could also be size but maximum int avoids the call
+    }
+
+    return $pageSize;
 }
 
 sub _auditLog
@@ -328,9 +342,9 @@ sub _paramsForRefreshTable
     my $action = $self->{'action'};
     my $filter = $self->unsafeParam('filter');
     my $page = defined $forcePage ? $forcePage : $self->param('page');
-    my $pageSize = $self->param('pageSize');
-    if (defined ($pageSize)) {
-        $model->setPageSize($pageSize);
+    my $pageSizeParam = $self->param('pageSize');
+    if (defined ($pageSizeParam)) {
+        $model->setPageSize($pageSizeParam);
     }
 
     my $editId;
@@ -416,7 +430,7 @@ sub addAction
     my $nAdded = 1;
     my $filter = $self->unsafeParam('filter');
     my $page   = $self->param('page');
-    my $pageSize = $self->param('pageSize');
+    my $pageSize = $self->_pageSize();
     my @ids    = @{ $self->_modelIds($model, $filter) };
     my $lastIdPosition = @ids -1;
 
@@ -499,7 +513,7 @@ sub delAction
     }
 
     my $page   = $self->param('page');
-    my $pageSize = $self->param('pageSize');
+    my $pageSize = $self->_pageSize();
     my $nPages       = ceil(@ids/$pageSize);
     my $nPagesBefore = ceil((@ids+1)/$pageSize);
     my $pageChange   = ($nPages != $nPagesBefore);
@@ -544,7 +558,7 @@ sub showChangeRowForm
 
     my $filter = $self->unsafeParam('filter');
     my $page = $self->param('page');
-    my $pageSize = $self->param('pageSize');
+    my $pageSize = $self->_pageSize();
     my $tpages   = ceil($model->size()/$pageSize);
 
     my $presetParams = {};
@@ -675,8 +689,7 @@ sub setPositionAction
 
 sub _process
 {
-    my $self = shift;
-
+    my ($self) = @_;
     $self->_requireParam('action');
     my $action = $self->param('action');
     $self->{'action'} = $action;
@@ -701,11 +714,6 @@ sub _process
     } else {
         throw EBox::Exceptions::Internal("Action '$action' not supported");
     }
-
-    # json return  should not put messages in UI
-    if ($self->{json}) {
-        $model->setMessage('');
-    }
 }
 
 sub _redirect
@@ -714,7 +722,7 @@ sub _redirect
 
     my $model = $self->{'tableModel'};
 
-    return unless (defined($model));
+    return undef unless (defined($model));
 
     return $model->popRedirection();
 }
@@ -722,7 +730,7 @@ sub _redirect
 # TODO: Move this function to the proper place
 sub _printRedirect
 {
-    my $self = shift;
+    my ($self) = @_;
     my $url = $self->_redirect();
     return unless (defined($url));
     print "<script>window.location.href='$url'</script>";
@@ -730,11 +738,25 @@ sub _printRedirect
 
 sub _print
 {
-    my $self = shift;
+    my ($self) = @_;
     $self->SUPER::_print();
     unless ($self->{json}) {
         $self->_printRedirect;
     }
+}
+
+sub JSONReply
+{
+    my ($self, $json) = @_;
+    # json return  should not put messages in the model object
+    $self->{tableModel}->setMessage('');
+
+    my $redirect = $self->_redirect();
+    if ($redirect) {
+        $json->{redirect} = $redirect;
+    }
+
+    return $self->SUPER::JSONReply($json);
 }
 
 sub _getAuditId
@@ -755,7 +777,7 @@ sub _getAuditId
 sub _htmlForRow
 {
     my ($self, $model, $row, $filter, $page) = @_;
-    my $table     = $model->table();
+    my $table = $model->table();
 
     my $html;
     my @params = (

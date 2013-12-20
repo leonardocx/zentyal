@@ -48,12 +48,21 @@
     margin: 0;
     color: transparent;
 }
+#header a {
+    float: left;
+}
 #header a:hover {
     background: transparent;
     color: black;
 }
 #header img {
     <% $header_img_padding %>
+}
+#header span {
+    font-size: 14px;
+    color: #999;
+    float: left;
+    margin-top: 30px;
 }
 #hmenu {
     position: absolute;
@@ -425,6 +434,11 @@ body {
     position: relative;
     behavior: url(/data/js/csshover.htc);
 }
+
+body#OpenChange {
+    background-image: url("/images/technology-preview.png");
+}
+
 h1 {
     display: inline;
     color: <% $main_color %>;
@@ -515,7 +529,8 @@ TABS options
     margin-right: -5px;
 }
 .tabs li:first-child > a, .tabs li:first-child > span{
-    border-radius: 5px 0px 0px 5px;
+    border-bottom-left-radius: 5px;
+    border-top-left-radius: 5px;
 }
 .tabs li > a, .tabs li > span {
     background: none repeat scroll 0 0 #EEEEEE;
@@ -528,7 +543,8 @@ TABS options
     border: 1px solid #CCCCCC;
 }
 .tabs li:last-child > a, .tabs li:last-child > span{
-    border-radius: 0px 5px 5px 0px;
+    border-bottom-right-radius: 5px;
+    border-top-right-radius: 5px;
 }
 .tabs li > a:hover, .tabs li > span:hover{
     background-color: #ddd;
@@ -722,6 +738,7 @@ td[class^="icon"] {
 .icon-register { background-image: url("/data/images/package-icons/zentyal-register.png");}
 .icon-remoteservices { background-image: url("/data/images/package-icons/zentyal-remoteservices.png");}
 .icon-samba { background-image: url("/data/images/package-icons/zentyal-samba.png");}
+.icon-domain { background-image: url("/data/images/package-icons/zentyal-domain.png");}
 .icon-status { background-image: url("/data/images/package-icons/zentyal-mstatus.png");}
 .icon-system { background-image: url("/data/images/package-icons/zentyal-system.png");}
 .icon-software  { background-image: url("/data/images/package-icons/zentyal-software.png");}
@@ -754,7 +771,7 @@ h4[class^="icon"]{
     padding-left: 45px !important;
 }
 h3.icon-user,
-h4.icon-user{ 
+h4.icon-user{
     background-image: url('/data/images/treeview/user-big.png')
 }
 h3.icon-duser,
@@ -1863,8 +1880,17 @@ add new pop up
 .addselector label input{
     margin-right: 5px;
 }
+/********************************************************************************
+
+DIALOG
+
+********************************************************************************/
+
 .ui-dialog{
     padding:0px !important;
+}
+.no-close .ui-dialog-titlebar-close {
+    display: none;
 }
 
 /********************************************************************************
@@ -2151,7 +2177,7 @@ form.formDiv > div {
     margin-top: 20px;
 }
 form.formDiv label,
-form.formDiv .radio-group strong, 
+form.formDiv .radio-group strong,
 form.formDiv .checkbox-group strong {
     display: block;
     color: #333;
@@ -2240,14 +2266,14 @@ form.formDiv input[type="radio"] {
 .radio-group{
     margin-bottom: 10px;
 }
-form.formDiv .radio-group strong, 
+form.formDiv .radio-group strong,
 form.formDiv .checkbox-group strong{
     color: #333;
     display: block;
     font-weight: bold;
     margin-bottom: 3px;
 }
-form.formDiv .radio-group label, 
+form.formDiv .radio-group label,
 form.formDiv .checkbox-group label{
     font-weight: normal;
     color: #666;
@@ -2263,8 +2289,8 @@ form.formDiv .inline-field{
 .inline-input .checkbox,
 .changeRow div input,
 .changeRow div select,
-.changeRow div span, 
-.changeRow div .checkbox { 
+.changeRow div span,
+.changeRow div .checkbox {
     display: inline-block;
     vertical-align: middle;
 }
@@ -2275,7 +2301,7 @@ form.formDiv .inline-field{
 }
 
 .inline-label{
-    display: inline-block;
+    display: inline-block !important;
     vertical-align: middle;
 }
 /********************************************************************************
@@ -2644,3 +2670,4 @@ td.stopped .done-bar{
     min-width: 100px;
 }
 }
+

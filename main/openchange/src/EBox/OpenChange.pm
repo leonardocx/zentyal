@@ -154,16 +154,27 @@ sub _daemonsToDisable
     return $daemons;
 }
 
+# Method: _daemons
+#
+# Overrides:
+#
+#      <EBox::Module::Service::_daemons>
+#
 sub _daemons
 {
     my ($self) = @_;
     my $daemons = [
         {
-            name => 'zentyal.ocsmanager',
-            type => 'upstart',
-            precondtion => sub { return $self->_autodiscoverEnabled() },
-           }
-       ];
+            name         => 'zentyal.ocsmanager',
+            type         => 'upstart',
+            precondition => sub { return $self->_autodiscoverEnabled() },
+        },
+        {
+            name         => 'zentyal.zoc-migrate',
+            type         => 'upstart',
+            precondition => sub { return $self->isProvisioned() },
+        },
+    ];
     return $daemons;
 }
 
@@ -341,12 +352,14 @@ sub menu
         order => $order);
     $folder->add(new EBox::Menu::Item(
         url       => 'OpenChange/View/Provision',
-        text      => __('Provision'),
+        text      => __('Setup'),
         order     => 0));
-    $folder->add(new EBox::Menu::Item(
-        url       => 'OpenChange/Migration/Connect',
-        text      => __('MailBox Migration'),
-        order     => 1));
+    if ($self->isProvisioned()) {
+        $folder->add(new EBox::Menu::Item(
+            url       => 'OpenChange/Migration/Connect',
+            text      => __('MailBox Migration'),
+            order     => 1));
+    }
     $root->add($folder);
 }
 

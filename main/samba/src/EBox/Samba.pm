@@ -127,7 +127,7 @@ sub _create
     my $class = shift;
     my $self = $class->SUPER::_create(
         name => 'samba',
-        printableName => __('File Sharing'),
+        printableName => __('File Sharing and Domain Services'),
         @_);
     bless ($self, $class);
     return $self;
@@ -912,15 +912,7 @@ sub writeSambaConfig
         push (@array, 'print' => 1) if ($printersModule->isEnabled());
     }
 
-    my $shares = $self->shares();
-    push (@array, 'shares' => $shares);
-    foreach my $share (@{$shares}) {
-        if ($share->{guest}) {
-            push (@array, 'guestAccess' => 1);
-            push (@array, 'guestAccount' => GUEST_DEFAULT_USER);
-            last;
-        }
-    }
+    push (@array, 'shares' => $self->shares());
 
     push (@array, 'antivirus' => $self->defaultAntivirusSettings());
     push (@array, 'antivirus_exceptions' => $self->antivirusExceptions());
@@ -1003,19 +995,19 @@ sub _createDirectories
 
     my @cmds;
     push (@cmds, 'mkdir -p ' . SAMBA_DIR);
-    #push (@cmds, "chown root:$group " . SAMBA_DIR);
+    push (@cmds, "chown root:$group " . SAMBA_DIR);
     push (@cmds, "chmod 770 " . SAMBA_DIR);
     push (@cmds, "setfacl -b " . SAMBA_DIR);
     push (@cmds, "setfacl -m u:$nobody:rx " . SAMBA_DIR);
     push (@cmds, "setfacl -m u:$zentyalUser:rwx " . SAMBA_DIR);
 
     push (@cmds, 'mkdir -p ' . PROFILES_DIR);
-    #push (@cmds, "chown root:$group " . PROFILES_DIR);
+    push (@cmds, "chown root:$group " . PROFILES_DIR);
     push (@cmds, "chmod 770 " . PROFILES_DIR);
     push (@cmds, "setfacl -b " . PROFILES_DIR);
 
     push (@cmds, 'mkdir -p ' . SHARES_DIR);
-    #push (@cmds, "chown root:$group " . SHARES_DIR);
+    push (@cmds, "chown root:$group " . SHARES_DIR);
     push (@cmds, "chmod 770 " . SHARES_DIR);
     push (@cmds, "setfacl -b " . SHARES_DIR);
     push (@cmds, "setfacl -m u:$nobody:rx " . SHARES_DIR);
@@ -1024,10 +1016,6 @@ sub _createDirectories
     push (@cmds, "mkdir -p '$quarantine'");
     push (@cmds, "chown -R $zentyalUser.adm '$quarantine'");
     push (@cmds, "chmod 770 '$quarantine'");
-
-    push (@cmds, "chown root:$group " . SAMBA_DIR);
-    push (@cmds, "chown root:$group " . PROFILES_DIR);
-    push (@cmds, "chown root:$group " . SHARES_DIR);
 
     EBox::Sudo::root(@cmds);
 }
@@ -1202,13 +1190,14 @@ sub menu
 {
     my ($self, $root) = @_;
 
-    my $folder = new EBox::Menu::Folder(name      => 'Samba',
-                                        text      => $self->printableName(),
-                                        icon      => 'samba',
+    my $folder = new EBox::Menu::Folder(name  => 'Domain',
+                                        text      => __('Domain'),
+                                        icon      => 'domain',
                                         separator => 'Office',
-                                        order     => 540);
-    $folder->add(new EBox::Menu::Item(url   => 'Samba/Composite/General',
-                                      text  => __('General'),
+                                        order     => 535);
+
+    $folder->add(new EBox::Menu::Item(url   => 'Samba/View/GeneralSettings',
+                                      text  => __('Settings'),
                                       order => 10));
     $folder->add(new EBox::Menu::Item(url   => 'Samba/View/GPOs',
                                       text  => __('Group Policy Objects'),
@@ -1216,6 +1205,13 @@ sub menu
     $folder->add(new EBox::Menu::Item(url   => 'Samba/Tree/GPOLinks',
                                       text  => __('Group Policy Links'),
                                       order => 30));
+
+    $root->add(new EBox::Menu::Item(text      => __('File Sharing'),
+                                    url       => 'Samba/Composite/General',
+                                    icon      => 'samba',
+                                    separator => 'Office',
+                                    order     => 540));
+
     $root->add($folder);
 }
 
@@ -2310,14 +2306,15 @@ sub entryModeledObject
 {
     my ($self, $entry) = @_;
 
-    my $object;
+    unless (defined $entry) {
+        throw EBox::Exceptions::MissingArgument('entry');
+    }
 
+    my $object;
     my $anyObjectClasses = any($entry->get_value('objectClass'));
     my @entryClasses =qw(EBox::Samba::OU EBox::Samba::User EBox::Samba::Contact EBox::Samba::Group EBox::Samba::Container EBox::Samba::BuiltinDomain);
     foreach my $class (@entryClasses) {
-            EBox::debug("Checking " . $class->mainObjectClass . ' against ' . (join ',', $entry->get_value('objectClass')) );
         if ($class->mainObjectClass eq $anyObjectClasses) {
-
             return $class->new(entry => $entry);
         }
     }
@@ -2326,7 +2323,6 @@ sub entryModeledObject
     if ($entry->dn() eq $ldb->dn()) {
         return $self->defaultNamingContext();
     }
-
 
     EBox::warn("Ignored unknown perl object for DN: " . $entry->dn());
     return undef;
@@ -2406,13 +2402,17 @@ sub ldbObjectByObjectGUID
 {
     my ($self, $objectGUID) = @_;
 
-    my $baseObject = new EBox::Samba::LdbObject(objectGUID => $objectGUID);
-
-    if ($baseObject->exists()) {
-        return $self->entryModeledObject($baseObject->_entry());
-    } else {
-        return undef;
+    unless (defined $objectGUID) {
+        throw EBox::Exceptions::MissingArgument('objectGUID');
     }
+
+    my $baseObject = new EBox::Samba::LdbObject(objectGUID => $objectGUID);
+    if ($baseObject->exists()) {
+        my $object = $self->entryModeledObject($baseObject->_entry());
+        return $object;
+    }
+
+    return undef;
 }
 
 # Method: objectFromDN
@@ -2460,6 +2460,10 @@ sub defaultNamingContext
 sub hiddenSid
 {
     my ($self, $object) = @_;
+
+    unless (defined $object) {
+        throw EBox::Exceptions::MissingArgument('object');
+    }
 
     unless ($object->can('sid')) {
         return 0;

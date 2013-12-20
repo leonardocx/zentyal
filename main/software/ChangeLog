@@ -1,8 +1,12 @@
 HEAD
 	+ Stop using apt directly, instead, we use the aptdaemon's D-BUS API
-	+ Replace select/deselect all buttons with column checkbox
 3.3
+	+ Replace select/deselect all buttons with column checkbox
 	+ Switch from Error to TryCatch for exception handling
+	+ Updated installer slides
+	+ Remove style in zentyal package list when sb is set as it is not
+	  longer applied
+	+ Remove restricted modules to get info
 	+ Added missing EBox::Exceptions uses
 	+ Set version to 3.3
 3.2.1

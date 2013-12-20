@@ -73,21 +73,21 @@ sub _table
             printableName => __('Organization Name'),
             editable      => 1,
             subtypes      => [
-                new EBox::Types::Select(
-                    fieldName     => 'existingorganizationname',
-                    printableName => __('Existing One'),
-                    populate      => \&_existingOrganizationNames,
-                    editable      => 1),
                 new EBox::Types::Text(
                     fieldName     => 'neworganizationname',
                     printableName => __('New One'),
                     defaultValue  => $self->_defaultOrganizationName(),
                     editable      => 1),
+                new EBox::Types::Select(
+                    fieldName     => 'existingorganizationname',
+                    printableName => __('Existing One'),
+                    populate      => \&_existingOrganizationNames,
+                    editable      => 1),
             ])
         );
         push (@tableDesc, new EBox::Types::Boolean(
             fieldName     => 'enableUsers',
-            printableName => __('Enable all users after provision'),
+            printableName => __('Enable OpenChange account for all existing users'),
             defaultValue  => 1,
             editable      => 1)
         );
@@ -107,26 +107,26 @@ sub _table
 #            states => {
 #                provisioned => {
 #                    name => 'deprovision',
-#                    printableValue => __('Deprovision'),
+#                    printableValue => __('Unconfigure'),
 #                    handler => \&_doDeprovision,
-#                    message => __('Database deprovisioned'),
+#                    message => __('Database unconfigured'),
 #                    enabled => sub { $self->parentModule->isEnabled() },
 #                },
 #                notProvisioned => {
 #                    name => 'provision',
-#                    printableValue => __('Provision'),
+#                    printableValue => __('Setup'),
 #                    handler => \&_doProvision,
-#                    message => __('Database provisioned'),
+#                    message => __('Database configured'),
 #                    enabled => sub { $self->parentModule->isEnabled() },
 #                },
 #            }
 #        ),
         new EBox::Types::Action(
             name           => 'provision',
-            printableValue => __('Provision'),
+            printableValue => __('Setup'),
             model          => $self,
             handler        => \&_doProvision,
-            message        => __('Database provisioned'),
+            message        => __('Database configured'),
             enabled        => sub { not $self->parentModule->isProvisioned() },
         ),
     ];
@@ -134,13 +134,13 @@ sub _table
 
     my $dataForm = {
         tableName          => 'Provision',
-        printableTableName => __('Provision'),
+        printableTableName => __('Setup'),
         pageTitle          => __('OpenChange Server Provision'),
         modelDomain        => 'OpenChange',
         #defaultActions     => [ 'editField' ],
         customActions      => $customActions,
         tableDescription   => \@tableDesc,
-        help               => __('Provisions an OpenChange Groupware server.'),
+        help               => __('Setup an OpenChange Groupware server.'),
     };
 
     return $dataForm;
@@ -340,6 +340,10 @@ sub _doProvision
     my $enableUsers = $params{enableUsers};
 #    my $registerAsMain = $params{registerAsMain};
     my $additionalInstallation = 0;
+
+    unless ($organizationName) {
+        throw EBox::Exceptions::DataMissing(data => __('Organization Name'));
+    }
 
     foreach my $organization (@{$self->{organizations}}) {
         if ($organization->name() eq $organizationName) {

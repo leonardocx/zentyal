@@ -65,7 +65,7 @@ sub title
                         finishClass => $finishClass,
                         remoteServicesURL => $remoteServicesURL,
                         image_title => $image_title,
-                       );
+                        version => _htmlVersion());
     return $html;
 }
 
@@ -84,7 +84,7 @@ sub titleNoAction
 
     my $html = makeHtml('headTitle.mas',
                         image_title => $image_title,
-                       );
+                        version => _htmlVersion());
     return $html;
 }
 
@@ -132,9 +132,9 @@ sub footer
 #
 #   string - containg the html code for the header page
 #
-sub header # (title)
+sub header
 {
-    my ($title) = @_;
+    my ($title, $folder) = @_;
 
     my $serverName = __('Zentyal');
     my $global = EBox::Global->getInstance();
@@ -152,7 +152,7 @@ sub header # (title)
     }
 
     my $favicon = $global->theme()->{'favicon'};
-    my $html = makeHtml('header.mas', title => $title, favicon => $favicon );
+    my $html = makeHtml('header.mas', title => $title, favicon => $favicon, folder => $folder);
     return $html;
 
 }
@@ -173,6 +173,17 @@ sub makeHtml
     my $comp = $interp->make_component(comp_file => $filePath);
     $interp->exec($comp, @params);
     return $output;
+}
+
+sub _htmlVersion
+{
+    my $version = EBox::Config::version();
+
+#    unless (EBox::Global->communityEdition()) {
+#        $version .= ' <em>Service Pack 1</em>';
+#    }
+
+    return $version;
 }
 
 1;
