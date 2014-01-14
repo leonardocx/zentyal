@@ -26,7 +26,8 @@ use EBox::Ldap;
 use EBox::NetWrappers qw(ip_mac);
 
 use Crypt::Rijndael;
-use Apache2::Connection;
+use Apache2::Connection ();
+use Apache2::RequestRec ();
 use Apache2::RequestUtil;
 use Apache2::Const qw(:common HTTP_FORBIDDEN HTTP_MOVED_TEMPORARILY);
 use MIME::Base64;
@@ -235,12 +236,12 @@ sub authen_cred  # (request, user, password)
     my ($self, $r, $user, $passwd) = @_;
 
     unless ($self->checkPassword($user, $passwd)) {
-        my $ip  = $r->connection->remote_ip();
+        my $ip  = $r->connection->client_ip();
         EBox::warn("Failed login from: $ip");
         return;
     }
 
-    return _savesession($user, $passwd, $r->connection->remote_ip());
+    return _savesession($user, $passwd, $r->connection->client_ip());
 }
 
 # Method: authen_ses_key
@@ -280,7 +281,7 @@ sub authen_ses_key  # (request, session_key)
     close($sidFile);
 
     if (defined($user)) {
-        updateSession($session_key, $r->connection->remote_ip());
+        updateSession($session_key, $r->connection->client_ip());
         return $user;
     } else {
         $r->subprocess_env(LoginReason => "NotLoggedIn");
@@ -301,7 +302,7 @@ sub logout # (request)
 
     # expire session
     my $session_key = substr($self->key($r), 0, 32);
-    updateSession($session_key, $r->connection->remote_ip(), 0);
+    updateSession($session_key, $r->connection->client_ip(), 0);
 
     # notify captive daemon
     system('cat ' . EBox::CaptivePortal->LOGOUT_FILE);

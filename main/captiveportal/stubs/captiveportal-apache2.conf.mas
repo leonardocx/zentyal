@@ -144,13 +144,12 @@ CustomLog /var/log/zentyal-captiveportal/access.log combined
         AuthName EBox
         PerlAuthenHandler EBox::CaptivePortal::Auth->authenticate
         PerlAuthzHandler  EBox::CaptivePortal::Auth->authorize
-        require valid-user
+        Require valid-user
         SetHandler perl-script
         PerlHandler ModPerl::Registry
         PerlSendHeader On
         AllowOverride None
         Options +ExecCGI
-        Require all granted
     </Directory>
 
     RewriteEngine On
