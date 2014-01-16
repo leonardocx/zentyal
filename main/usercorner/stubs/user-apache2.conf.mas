@@ -160,13 +160,12 @@ PerlSetVar AuthCookieDebug 0
 	AuthName EBox
 	PerlAuthenHandler EBox::UserCorner::Auth->authenticate
 	PerlAuthzHandler  EBox::UserCorner::Auth->authorize
-	require valid-user
+	Require valid-user
     SetHandler perl-script
     PerlHandler ModPerl::Registry
     PerlSendHeader On
     AllowOverride None
     Options +ExecCGI
-    Require all granted
 </Directory>
 
 RewriteEngine On
