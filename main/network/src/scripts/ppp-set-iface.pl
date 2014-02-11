@@ -34,7 +34,7 @@ EBox::debug("iface: $iface") if $iface;
 EBox::debug("ppp_iface: $ppp_iface") if $ppp_iface;
 EBox::debug("ppp_addr: $ppp_addr") if $ppp_addr;
 
-for my $tries (1 .. 10) {
+for my $tries (1 .. 50) {
     try {
         $network->setRealPPPIface($iface, $ppp_iface, $ppp_addr);
         # Do not call regenGateways if we are restarting changes,
